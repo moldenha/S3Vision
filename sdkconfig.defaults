@@ -1,0 +1,12 @@
+CONFIG_BLINK_LED_STRIP=y
+#
+# Please Note:
+# ESP32-S3-DevKitC v1.1 uses GPIO38 for the on-board LED
+# ESP32-S3-DevKitC v1.0 uses GPIO48 for the on-board LED
+#
+# This is important:
+# It allows filenames of more than 8 characters with an extension of 3 characters
+# (this enables frame counting, and time stamps embedded into the filename)
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_MAX_LFN=255
+CONFIG_BLINK_GPIO=38

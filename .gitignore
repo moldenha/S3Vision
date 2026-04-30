@@ -1,0 +1,9 @@
+*.bak
+pytest_hello_world.py
+*.DS_STORE
+.DS_STORE
+managed_components/
+build/
+main/build/
+sdkconfig.old
+

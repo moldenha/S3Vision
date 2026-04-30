@@ -1,0 +1,333 @@
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
+#include <sys/errno.h>
+
+extern "C" {
+#include "esp_log.h"
+#include "esp_err.h"
+#include "driver/spi_common.h"
+#include "driver/spi_master.h"
+#include "driver/gpio.h"
+#include "sdmmc_cmd.h"
+#include "esp_vfs_fat.h"
+#include "esp_camera.h"
+#include "nvs_flash.h"
+#include "esp_heap_caps.h"
+#include "freertos/queue.h"
+#include "esp_timer.h"
+
+#include "pins.h"
+}
+
+static const char *TAG = "XIAO_CAM";
+
+// Your pins
+#define PIN_MISO  9
+#define PIN_MOSI  8
+#define PIN_SCLK  7
+#define PIN_CS    (gpio_num_t)44
+
+
+
+extern "C"{
+// Working OV3660 config
+static camera_config_t camera_config = {
+    .pin_pwdn     = -1,
+    .pin_reset    = -1,
+    .pin_xclk     = XIAO_CAM_PIN_XCLK,
+    .pin_sccb_sda = XIAO_CAM_PIN_SIOD,
+    .pin_sccb_scl = XIAO_CAM_PIN_SIOC,
+    
+    .pin_d7       = XIAO_CAM_PIN_D7,
+    .pin_d6       = XIAO_CAM_PIN_D6,
+    .pin_d5       = XIAO_CAM_PIN_D5,
+    .pin_d4       = XIAO_CAM_PIN_D4,
+    .pin_d3       = XIAO_CAM_PIN_D3,
+    .pin_d2       = XIAO_CAM_PIN_D2,
+    .pin_d1       = XIAO_CAM_PIN_D1,
+    .pin_d0       = XIAO_CAM_PIN_D0,
+    .pin_vsync    = XIAO_CAM_PIN_VSYNC,
+    .pin_href     = XIAO_CAM_PIN_HREF,
+    .pin_pclk     = XIAO_CAM_PIN_PCLK,
+    
+    .xclk_freq_hz = 20000000,
+    .ledc_timer   = LEDC_TIMER_0,
+    .ledc_channel = LEDC_CHANNEL_0,
+    
+    .pixel_format = PIXFORMAT_JPEG,     // Try JPEG first
+    //WORKING .frame_size   = FRAMESIZE_QVGA,     // 800x600
+    .frame_size   = FRAMESIZE_HD,     // 800x600
+    .jpeg_quality = 5,
+    .fb_count     = 2,
+    .fb_location  = CAMERA_FB_IN_PSRAM,
+    .grab_mode    = CAMERA_GRAB_WHEN_EMPTY,
+    .sccb_i2c_port = 1
+};
+
+typedef struct {
+    uint8_t *data;
+    size_t len;
+    uint64_t timestamp_us;
+} frame_t;
+
+// Creates a queue to send frames to the SD card and create a lack of buffering until the next frame is ready to be saved
+QueueHandle_t frame_queue;
+SemaphoreHandle_t sd_mutex;
+
+}
+
+// Camera init
+extern "C" {
+static esp_err_t init_camera(void) {
+    ESP_LOGI(TAG, "Initializing OV3660...");
+    
+    esp_err_t err = esp_camera_init(&camera_config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Camera init failed: 0x%x", err);
+        return err;
+    }
+    
+    sensor_t *s = esp_camera_sensor_get();
+    // Initial settings
+    s->set_brightness(s, 3);
+    s->set_contrast(s, 0);
+    s->set_saturation(s, 0);
+    s->set_sharpness(s, 3);
+    s->set_whitebal(s, 1);
+    s->set_awb_gain(s, 1);
+    s->set_wb_mode(s, 0);
+    s->set_exposure_ctrl(s, 1);
+    s->set_aec2(s, 0);
+    s->set_ae_level(s, 0);
+    s->set_aec_value(s, 300);
+    s->set_gain_ctrl(s, 1);
+    s->set_agc_gain(s, 0);
+    s->set_gainceiling(s, (gainceiling_t)0);
+    s->set_bpc(s, 0);
+    s->set_wpc(s, 1);
+    s->set_raw_gma(s, 1);
+    s->set_lenc(s, 1);
+    s->set_hmirror(s, 0);
+    s->set_vflip(s, 0);
+    s->set_dcw(s, 1);
+    s->set_colorbar(s, 0);
+
+    // CRITICAL: Better exposure for dark scenes
+    s->set_exposure_ctrl(s, 1);     // Enable auto-exposure
+    s->set_aec2(s, 1);              // Enable advanced exposure control
+    s->set_ae_level(s, 2);          // Increase exposure level (range: -2 to 2)
+    s->set_aec_value(s, 600);       // Longer exposure time (default: 300)
+    
+    // Better gain for low light
+    s->set_gain_ctrl(s, 1);         // Enable auto gain
+    s->set_agc_gain(s, 15);         // Increase gain (range: 0-30)
+    s->set_gainceiling(s, GAINCEILING_128X);  // Higher gain ceiling
+    
+    // White balance for better colors
+    s->set_whitebal(s, 1);          // Enable auto white balance
+    s->set_awb_gain(s, 1);          // Enable AWB gain
+    
+    // Other improvements
+    s->set_lenc(s, 1);              // Enable lens correction
+    s->set_raw_gma(s, 1);           // Enable gamma correction
+    s->set_dcw(s, 1);               // Enable downsize
+    
+    ESP_LOGI(TAG, "✓ Camera initialized");
+    return ESP_OK;
+}
+
+void camera_task(void *pv){
+    while (true) {
+
+        camera_fb_t *fb = esp_camera_fb_get();
+        if (!fb) continue;
+
+        frame_t frame;
+        frame.len = fb->len;
+        frame.timestamp_us = esp_timer_get_time();
+
+        // IMPORTANT: copy frame into PSRAM heap (safe ownership transfer)
+        frame.data = (uint8_t*) heap_caps_malloc(frame.len, MALLOC_CAP_SPIRAM);
+
+        if (frame.data == NULL) {
+            esp_camera_fb_return(fb);
+            continue;
+        }
+
+        memcpy(frame.data, fb->buf, fb->len);
+
+        esp_camera_fb_return(fb);
+
+        ESP_LOGI(TAG, "Sent frame at: %llu", frame.timestamp_us);
+
+        xQueueSend(frame_queue, &frame, portMAX_DELAY);
+    }
+}
+
+void sd_task(void *pv)
+{
+    int frame_id = 0;
+
+    while (true) {
+
+        frame_t frame;
+
+        if (xQueueReceive(frame_queue, &frame, portMAX_DELAY)) {
+
+            xSemaphoreTake(sd_mutex, portMAX_DELAY);
+            static char filename[64];
+            ESP_LOGI(TAG, "Saving frame at: %llu", frame.timestamp_us);
+            snprintf(filename, sizeof(filename),
+                     "/sdcard/video/frame_%06d.jpg",
+                     frame_id++);
+                     // (uint64_t)frame.timestamp_us);
+            ESP_LOGW(TAG, "OPEN: %s", filename);
+            FILE *f = fopen(filename, "wb");
+            if (f) {
+                fwrite(frame.data, 1, frame.len, f);
+                fclose(f);
+                ESP_LOGI(TAG, "SAVED: %s", filename);
+            }else{
+                ESP_LOGE(TAG, "UNABLE TO SAVE frame at: %llu errno=%d", frame.timestamp_us, errno);
+                
+            }
+            xSemaphoreGive(sd_mutex);
+
+
+            heap_caps_free(frame.data);
+        }
+    }
+}
+
+// just for testing purposes
+void fps_task(void *pv)
+{
+    int count = 0;
+    uint64_t start = esp_timer_get_time();
+
+    while (true) {
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+        uint64_t now = esp_timer_get_time();
+        float fps = count * 1000000.0f / (now - start);
+
+        ESP_LOGI("FPS", "FPS: %.2f", fps);
+
+        count = 0;
+        start = now;
+    }
+}
+
+}
+
+
+
+extern "C" void app_main() {
+    gpio_reset_pin(XIAO_LED_RGB_GPIO);
+    gpio_set_direction(XIAO_LED_RGB_GPIO, GPIO_MODE_OUTPUT);
+    
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+
+    ESP_LOGI(TAG, "Free PSRAM: %d", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    ESP_LOGI(TAG, "Initializing SPI bus...");
+
+    spi_bus_config_t bus_cfg = {};
+    bus_cfg.mosi_io_num = PIN_MOSI;
+    bus_cfg.miso_io_num = PIN_MISO;
+    bus_cfg.sclk_io_num = PIN_SCLK;
+    bus_cfg.quadwp_io_num = -1;
+    bus_cfg.quadhd_io_num = -1;
+
+    ret = spi_bus_initialize(SPI2_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to init SPI bus");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Mounting SD card...");
+
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    host.slot = SPI2_HOST;
+
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.gpio_cs = PIN_CS;
+    slot_config.host_id = SPI2_HOST;
+
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = 5,
+        .allocation_unit_size = 16 * 1024,
+        .disk_status_check_enable = false,
+        .use_one_fat = false
+    };
+
+    sdmmc_card_t *card;
+    ret = esp_vfs_fat_sdspi_mount("/sdcard", &host, &slot_config, &mount_config, &card);
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to mount filesystem");
+        return;
+    }
+
+    ESP_LOGI(TAG, "SD card mounted");
+    int ret_mk = mkdir("/sdcard/video", 0777);
+    if (ret_mk != 0) {
+        ESP_LOGE(TAG, "mkdir failed errno=%d", errno);
+    }
+
+
+    // Print card info
+    sdmmc_card_print_info(stdout, card);
+
+    // Now save a frame
+    if (init_camera() != ESP_OK) {
+        ESP_LOGE(TAG, "Camera failed!");
+        return;
+    }
+    int frame_num = 23;
+    static char filename[64];
+    snprintf(filename, sizeof(filename),
+             "/sdcard/video/frame_%06d.jpg",
+             10);
+    // sd_mutex = xSemaphoreCreateMutex();
+    // frame_queue = xQueueCreate(5, sizeof(frame_t));
+    // xTaskCreatePinnedToCore(camera_task, "cam", 8192, NULL, 5, NULL, 0);
+    // xTaskCreatePinnedToCore(sd_task,     "sd",  8192, NULL, 5, NULL, 1);
+
+    camera_fb_t *fb = esp_camera_fb_get();
+
+    if (!fb) {
+        ESP_LOGE("CAM", "Camera capture failed");
+        return;
+    }
+
+    FILE *f = fopen(filename, "wb");
+
+    if (!f) {
+        ESP_LOGE("SD", "Failed to open file");
+        esp_camera_fb_return(fb);
+        return;
+    }
+
+    fwrite(fb->buf, 1, fb->len, f);
+    fclose(f);
+
+    ESP_LOGI("SD", "Saved file, size: %d bytes", fb->len);
+    esp_camera_fb_return(fb);
+
+
+    // Optional: unmount
+    esp_vfs_fat_sdcard_unmount("/sdcard", card);
+    ESP_LOGI(TAG, "Card unmounted");
+}
+
+
