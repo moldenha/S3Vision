@@ -46,6 +46,7 @@ MV_INLINE sdmmc_card_t* mount_sd() {
         return NULL;
     }
     
+    LOGI("SPI DEBUG", "Using Pins MOSI: %d, MISO: %d, SCLK: %d, CS: %d", SPI_PIN_MOSI, SPI_PIN_MISO, SPI_PIN_SCLK, (int)SPI_PIN_CS);
     LOGI(TAG, "Mounting SD card...");
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
@@ -55,6 +56,7 @@ MV_INLINE sdmmc_card_t* mount_sd() {
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_config.gpio_cs = SPI_PIN_CS;
     slot_config.host_id = SPI2_HOST;
+
     
     esp_vfs_fat_sdmmc_mount_config_t mount_config;
     mount_config.format_if_mount_failed = false;

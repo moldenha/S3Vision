@@ -60,8 +60,12 @@ MV_INLINE bool setup(){
 
     LOGI(TAG,"Largest DMA block: %d bytes\n",
            heap_caps_get_largest_free_block(MALLOC_CAP_DMA));
-    LOGI(TAG, "Initializing SPI bus...");
-
+    // LOGI(TAG, "Initializing SPI bus...");
+#if MV_SD_MODE == SD_SDMMC
+    ESP_LOGI("DEBUG (A)", "Doing mount SD -> SDMMC (%d)", MV_SD_MODE);
+#elif MV_SD_MODE == SD_SPI
+    ESP_LOGI("DEBUG (A)", "Doing mount SD -> SPI (%d)", MV_SD_MODE);
+#endif // MV_SD_MODE == SD_SPI || SD_MMC 
     sdmmc_card_t* card = ::mv::config::initialize_sd();
     if(!card) return false;
     

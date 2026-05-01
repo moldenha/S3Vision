@@ -49,14 +49,29 @@ extern "C" {
 #define SD_SPI 0
 
 #define MV_SD_MODE SD_SPI
-#define MV_SPEED_MODE VERBOSE_MODE // or verbose mode
+#define MV_SPEED_MODE FAST_MODE // or verbose mode
 
 
 #define FRAME_MAGIC 0xDEADBEEF
+
+
+#ifdef ADAFRUIT_MICROSD_BREAKOUT_
+// XIAO ESP32-S3 Pins to use on adafruit breakout micro sd board
+
 #define SPI_PIN_MISO  9
 #define SPI_PIN_MOSI  8
 #define SPI_PIN_SCLK  7
 #define SPI_PIN_CS    (gpio_num_t)44
+
+#else
+// ESP32-S3 Sense board pins to use
+#define SPI_PIN_CS (gpio_num_t)21 // GPIO21
+#define SPI_PIN_SCLK 7 //  GPIO7
+#define SPI_PIN_MISO 8 // GPIO8
+#define SPI_PIN_MOSI 9 // GPIO10
+
+#endif // ADAFRUIT_MICROSD_BREAKOUT_
+
 #define FRAME_POOL_SIZE 25
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 #define MIN(a,b) ((a) < (b) ? (a) : (b))

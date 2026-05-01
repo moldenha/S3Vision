@@ -43,6 +43,7 @@ static camera_config_t camera_config = {
     .sccb_i2c_port = 0
 };
 
+
 }
 
 #endif // MV_CONFIG_H__ 

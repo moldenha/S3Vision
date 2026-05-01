@@ -37,9 +37,11 @@ namespace mv::config {
 #error "ERROR: SD mode for SPI or SDMMC needs to be pre-defined"
 #else
 MV_INLINE sdmmc_card_t* initialize_sd() {
-#if MV_SD_MODE == SD_MMC
+#if MV_SD_MODE == SD_SDMMC
     sdmmc_card_t* card = sdmmc::mount_sd();
+    ESP_LOGI("DEBUG", "Doing mount SD -> SDMMC");
 #elif MV_SD_MODE == SD_SPI
+    ESP_LOGI("DEBUG", "Doing mount SD -> SPI");
     sdmmc_card_t* card = spi::mount_sd();
 #endif // MV_SD_MODE == SD_SPI || SD_MMC 
     if(card == NULL){ return NULL; }
