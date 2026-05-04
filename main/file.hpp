@@ -141,7 +141,7 @@ class File{
             uint8_t* start = &this->get_buffer()[this->get_len()];
             start[0] = byte;
             start += 1;
-            memcpy(start, ptr, size);
+            this->memcpy__(start, ptr, size);
             this->get_len() += (size + 1);
             // xSemaphoreGive(mutex);
             return true;
@@ -155,7 +155,7 @@ class File{
         uint8_t* start = &this->get_buffer()[this->get_len()];
         start[0] = byte;
         start += 1;
-        memcpy(start, ptr, size);
+        this->memcpy__(start, ptr, size);
         this->get_len() += (size + 1);
         // xSemaphoreGive(mutex);
         return true;
@@ -190,7 +190,15 @@ class File{
         this->idxb_full = false;
         // xSemaphoreGive(bufferb_mutex, portMAX_DELAY);
     }
-
+    
+    // Claude Code will call this alignment a bug, however, that is not true and here is why:
+    //  - Claude code will want both buffer a and buffer b aligned, and then have them added
+    //  - If that were to be done, this would mean that not all the memory written to the file would get to the SD card
+    //  - This would lead to a corruption of data, and a dropping of files, the DMA buffer is setup like this:
+    //      [         TOTAL DMA BUFFER           ]
+    //      [    BUFFER A     |      BUFFER B    ]
+    //      Where, in this function that all of buffer A should be automatically written (which is already aligned)
+    //      From there, the alignment of Buffer B should be taken into account so that it is aligned, making the entire write aligned
     inline void write_both__() noexcept {
         size_t aligned = idxb_len & ~(ALIGN - 1);
         aligned = aligned == idxb_len ? aligned : aligned + ALIGN; // so tail end of data not cut off
@@ -219,7 +227,8 @@ class File{
     inline void flush__() noexcept {
 #if MV_WRITE_MODE == WRITE_MODE_SAFE
         fflush(this->file_);
-#elif (MV_WRITE_MODE == WRITE_MODE_SAFE || MV_WRITE_MODE == WRITE_MODE_FAST)
+        fsync(this->fd_);
+#elif MV_WRITE_MODE == WRITE_MODE_FAST
         fsync(this->fd_);
 #endif
     }

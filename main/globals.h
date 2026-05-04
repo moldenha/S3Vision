@@ -73,8 +73,6 @@ extern "C" {
 #endif // ADAFRUIT_MICROSD_BREAKOUT_
 
 #define FRAME_POOL_SIZE 25
-#define MAX(a,b) ((a) > (b) ? (a) : (b))
-#define MIN(a,b) ((a) < (b) ? (a) : (b))
 
 
 extern "C" {

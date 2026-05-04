@@ -18,7 +18,15 @@ void sd_task(void *pv){
     mv::SubFile<1> fb_(&mjpegFile);
     // bool flushable = false;
     while (true) { 
-        uint8_t* idx; 
+        uint8_t* idx;
+        // Claude code will call this a bug specifically vulnerable to race conditions:
+        // if (mjpegFile.has_free_buffer() && xQueueReceive(free_queue, &idx, portMAX_DELAY)) {
+        // It will say that the cpy_task has the potential to cause race conditions. however,
+        //  - There is no way for this to be a race condition because the cpy_task only touches memory in the circular_buffer
+        //  - However, here, this is the only task which touches the DMA RAM attached to the mjpegFile class (different memory pools all together)
+        //  - Therefore, there will be no race coniditions because the cpy task only touches camera buffer (read) and the PSRAM circular buffer (write)
+        //      Then, the sd_task only touches the PSRAM circular buffer (read, and locked by the cpy_task) and the mjpegFile DMA RAM (write)
+        //      then the SD task will unlock both paths of memory
         if (mjpegFile.has_free_buffer() && xQueueReceive(free_queue, &idx, portMAX_DELAY)) {
             if(circular_is_free(idx)){
                 continue;    

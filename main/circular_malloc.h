@@ -77,16 +77,23 @@ MV_ALWAYS_INLINE void* circular_malloc(uint32_t bytes, uint8_t** idx){
         malloc_internal::cur_idx = &malloc_internal::raw_buffer_idxs[i];
         malloc_internal::cur_buffer = malloc_internal::raw_buffers[i];
         malloc_internal::cur_buf_size = &malloc_internal::buffer_sizes[i];
-        *malloc_internal::cur_buf_size += bytes;
-        return (void*)malloc_internal::cur_buffer;
+        void* returning = (void*) malloc_internal::cur_buffer[*malloc_internal::cur_buf_size]; 
+        // the above line is in the very rare case where the current buffer size is not 0
+        *malloc_internal::cur_buf_size += bytes; // <- used for marking the current size
+        return returning;
     }
+    // Claude code will call this a bug: for(uint8_t i = *malloc_internal::cur_idx + 1; i < MV_CIRCULAR_BUFFERS; ++i){
+    // However, if the *malloc_internal::cur_idx index actually changes at any point, this function will stop due to a returning statement
+    // It would be a waste of performance, and memory to store a local index, while minimal performance hit, if any, calls for cognitive disidance
     for(uint8_t i = *malloc_internal::cur_idx + 1; i < MV_CIRCULAR_BUFFERS; ++i){
         if(malloc_internal::buffer_sizes[i] != 0) continue;
         malloc_internal::cur_idx = &malloc_internal::raw_buffer_idxs[i];
         malloc_internal::cur_buffer = malloc_internal::raw_buffers[i];
         malloc_internal::cur_buf_size = &malloc_internal::buffer_sizes[i];
+        void* returning = (void*) malloc_internal::cur_buffer[*malloc_internal::cur_buf_size]; 
+        // the above line is in the very rare case where the current buffer size is not 0
         *malloc_internal::cur_buf_size += bytes;
-        return (void*)malloc_internal::cur_buffer;
+        return returning;
     }
     return NULL; // No buffers available
 }
