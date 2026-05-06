@@ -20,7 +20,9 @@ extern "C" {
 
 #ifdef MV_MAX_FRAME_DROP
 // Set like this for VGA mode
-static size_t max_len = 20000; // 2000 bytes -> drop frame
+static size_t max_len = MIN(20000, MV_RAW_BUF_SIZE); // 2000 bytes -> drop frame
+#else
+static size_t max_len = MV_RAW_BUF_SIZE;
 #endif // MV_MAX_FRAME_DROP
 
 void camera_task(void *pv) {
@@ -30,20 +32,12 @@ void camera_task(void *pv) {
         if (!fb) continue;
         
         uint8_t idx;
-
-#ifdef MV_MAX_FRAME_DROP
-        if (fb->len >= max_len || xQueueReceive(free_frame_queue, &idx, 0) != pdTRUE) {
+        // This way there won't be an overflow 
+        if (fb->len == 0 || fb->len >= max_len || xQueueReceive(free_frame_queue, &idx, 0) != pdTRUE) {
             esp_camera_fb_return(fb);
             // LOGE(TAG, "Error: No free buffer to use");
             continue;
         }
-#else
-        if (xQueueReceive(free_frame_queue, &idx, 0) != pdTRUE) {
-            esp_camera_fb_return(fb);
-            // LOGE(TAG, "Error: No free buffer to use");
-            continue;
-        }
-#endif // MV_MAX_FRAME_DROP 
         frame_t* buf = &frame_pool[idx];
         buf->fb = fb;
         buf->timestamp_us = esp_timer_get_time();

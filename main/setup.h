@@ -79,10 +79,33 @@ MV_INLINE bool setup(){
         return false;
     }
 
-    free_queue  = xQueueCreate(FRAME_POOL_SIZE, sizeof(uint8_t*));
+    free_queue = xQueueCreate(FRAME_POOL_SIZE, sizeof(uint8_t*));
+    if(free_queue == NULL) {
+        LOGE(TAG, "Failed to create free_queue");
+        return false;
+    }
+
     free_frame_queue = xQueueCreate(FRAME_POOL_SIZE, sizeof(uint8_t));
+    if(free_frame_queue == NULL) {
+        LOGE(TAG, "Failed to create free_frame_queue");
+        return false;
+    }
+
     frame_queue = xQueueCreate(FRAME_POOL_SIZE, sizeof(uint8_t));
-    file_mutex = xSemaphoreCreateMutex();
+    if(frame_queue == NULL) {
+        LOGE(TAG, "Failed to create frame_queue");
+        return false;
+    }
+
+    // file_mutex = xSemaphoreCreateMutex();
+    // if(file_mutex == NULL) {
+    //     LOGE(TAG, "Failed to create file_mutex");
+    //     return false;
+    // }
+    // free_queue  = xQueueCreate(FRAME_POOL_SIZE, sizeof(uint8_t*));
+    // free_frame_queue = xQueueCreate(FRAME_POOL_SIZE, sizeof(uint8_t));
+    // frame_queue = xQueueCreate(FRAME_POOL_SIZE, sizeof(uint8_t));
+    // file_mutex = xSemaphoreCreateMutex();
 
 
     for(uint8_t i = 0; i < FRAME_POOL_SIZE; ++i){

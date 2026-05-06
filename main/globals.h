@@ -88,7 +88,7 @@ QueueHandle_t frame_queue;
 QueueHandle_t free_frame_queue;
 QueueHandle_t free_queue;
 TaskHandle_t sd_task_handle;
-SemaphoreHandle_t file_mutex; // to make sure file isn't written to at the same time
+// SemaphoreHandle_t file_mutex; // to make sure file isn't written to at the same time
 
 
 

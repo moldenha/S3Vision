@@ -19,7 +19,9 @@ void cpy_task(void *pv){
             frame_t *buf = &frame_pool[idx]; 
             // LOGI(TAG, "CPY task recieved frame pool %d", (int)idx); // <- slows fps (probably)
             uint32_t size = (uint32_t)buf->fb->len;
-            uint8_t* freeing_idx;
+            uint8_t* freeing_idx = NULL;
+            // The size was checked in the camera_task, so that there won't be an issue with the size being too large
+            //  or even close to UINT32_MAX
             uint8_t* ptr = (uint8_t*)circular_malloc(size + STARTING_MALLOC_SIZE, &freeing_idx);
             if(!ptr){
                 // LOGW(TAG, "Warning: No pointer available");

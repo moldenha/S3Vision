@@ -98,7 +98,7 @@ MV_INLINE bool initialize_circular_buffers__(){
 // Returns a pointer to the memory
 // Also gives an idx that needs to be potentially freed
 MV_ALWAYS_INLINE void* circular_malloc(uint32_t bytes, uint8_t** idx){
-    if((*malloc_internal::cur_buf_size + bytes) < MV_RAW_BUF_SIZE){
+    if((*malloc_internal::cur_buf_size + bytes) <= MV_RAW_BUF_SIZE){
         void* returning = (void*)&malloc_internal::cur_buffer[*malloc_internal::cur_buf_size]; 
         *malloc_internal::cur_buf_size += bytes;
         *idx = NULL;
@@ -152,7 +152,7 @@ MV_ALWAYS_INLINE uint32_t cget_circular_buffer_size(uint8_t* idx){
 }
 
 MV_ALWAYS_INLINE bool circular_is_free(uint8_t* idx){
-    return malloc_internal::buffer_sizes[*idx] == 0;
+    return ((idx == NULL || *idx >= MV_CIRCULAR_BUFFERS) ? true : malloc_internal::buffer_sizes[*idx] == 0);
 }
 
 MV_ALWAYS_INLINE void circular_free(uint8_t* idx){

@@ -80,8 +80,8 @@ class File{
                 dst[i] = src[i];
             }
 #else
-            // If everything is 4-byte aligned, use fast 32-bit copy
-            if ((((uintptr_t)dst | (uintptr_t)src | size) & 3) == 0) {
+            // Require 32-byte alignment for DMA safety
+            if ((((uintptr_t)dst | (uintptr_t)src | size) & 31) == 0) {
                 //ESP_LOGI("MEMCPY SEGFAULT", "Doing aligned copy");
                 uint32_t* d32 = (uint32_t*)dst;
                 const uint32_t* s32 = (const uint32_t*)src;
@@ -105,7 +105,7 @@ class File{
 
     // inline SemaphoreHandle_t& get_mutex() noexcept { return idx == 0 ? buffera_mutex : bufferb_mutex; }
     inline bool store__(const void* ptr, uint32_t size) noexcept {
-        if((this->get_len() + size) < SD_WRITE_CHUNK_SIZE){
+        if((this->get_len() + size) <= SD_WRITE_CHUNK_SIZE){
             // SemaphoreHandle_t& mutex = this->get_mutex();
             // xSemaphoreTake(mutex, portMAX_DELAY);
             assert(this->get_len() < SD_WRITE_CHUNK_SIZE);
@@ -282,6 +282,7 @@ class File{
         }
 
         ~File(){
+            // Not implemented on purpose, up to the user to manually free if needed using the close() function
             // if(buffer_){
             //     heap_caps_free(buffer_);
             //     buffer_ = NULL;
@@ -291,6 +292,26 @@ class File{
             //     file_ = NULL;
             // }
             // fd_ = 0;
+        }
+        
+        MV_ALWAYS_INLINE void close() noexcept {
+            this->flush__();
+            if(buffer_){
+                heap_caps_free(buffer_);
+                buffer_ = NULL;
+            }
+#if MV_WRITE_MODE == WRITE_MODE_SAFE
+            if(file_){
+                fclose(file_);
+                file_ = NULL;
+                fd_ = 0;
+            }
+#elif MV_WRITE_MODE == WRITE_MODE_FAST
+            if(fd_ != 0){
+                ::close(fd_);
+                fd_ = 0;
+            }
+#endif
         }
 
 #if MV_WRITE_MODE == WRITE_MODE_SAFE
