@@ -4,6 +4,9 @@
 #ifndef MV_GLOBALS_H__
 #define MV_GLOBALS_H__
 
+// Specifically for TAG variable when on FAST_MODE
+#pragma GCC diagnostic ignored "-Wunused-variable"
+
 extern "C" {
 #include "driver/spi_common.h"
 #include "driver/spi_master.h"
