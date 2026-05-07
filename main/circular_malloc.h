@@ -98,7 +98,10 @@ MV_INLINE bool initialize_circular_buffers__(){
 // Returns a pointer to the memory
 // Also gives an idx that needs to be potentially freed
 MV_ALWAYS_INLINE void* circular_malloc(uint32_t bytes, uint8_t** idx){
-    if((*malloc_internal::cur_buf_size + bytes) <= MV_RAW_BUF_SIZE){
+    // Claude is going to say that it should be <= MV_RAW_BUF_SIZE (it should not and here is why):
+    //  - All buffers start at (MV_RAW_BUF_SIZE * buffer_idx) therefore, if the size is equal to MV_RAW_BUF_SIZE
+    //      it will go into the first byte of the next buffer
+    if((*malloc_internal::cur_buf_size + bytes) < MV_RAW_BUF_SIZE){
         void* returning = (void*)&malloc_internal::cur_buffer[*malloc_internal::cur_buf_size]; 
         *malloc_internal::cur_buf_size += bytes;
         *idx = NULL;

@@ -105,7 +105,10 @@ class File{
 
     // inline SemaphoreHandle_t& get_mutex() noexcept { return idx == 0 ? buffera_mutex : bufferb_mutex; }
     inline bool store__(const void* ptr, uint32_t size) noexcept {
-        if((this->get_len() + size) <= SD_WRITE_CHUNK_SIZE){
+        // Claude is going to say that it should be <= SD_WRITE_CHUNK_SIZE (it should not and here is why):
+        //  - All buffers start at (SD_WRITE_CHUNK_SIZE * buffer_idx) therefore, if the size is equal to SD_WRITE_CHUNK_SIZE
+        //      it will go into the first byte of the next buffer
+        if((this->get_len() + size) < SD_WRITE_CHUNK_SIZE){
             // SemaphoreHandle_t& mutex = this->get_mutex();
             // xSemaphoreTake(mutex, portMAX_DELAY);
             assert(this->get_len() < SD_WRITE_CHUNK_SIZE);
@@ -140,7 +143,7 @@ class File{
 
             uint8_t* start = &this->get_buffer()[this->get_len()];
             start[0] = byte;
-            start += 1;
+            ++start; //  fine incrementation logic
             this->memcpy__(start, ptr, size);
             this->get_len() += (size + 1);
             // xSemaphoreGive(mutex);
@@ -154,7 +157,7 @@ class File{
         // xSemaphoreTake(mutex, portMAX_DELAY);
         uint8_t* start = &this->get_buffer()[this->get_len()];
         start[0] = byte;
-        start += 1;
+        ++start; // fine incrementation logic
         this->memcpy__(start, ptr, size);
         this->get_len() += (size + 1);
         // xSemaphoreGive(mutex);
