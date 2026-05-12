@@ -15,7 +15,9 @@ extern "C" {
 #include "pins.h"
 }
 #include "globals.h"
+#include "name_it.hpp"
 
+// Setup related
 #include "sd.h"
 #include "log.h"
 #include "cam_setup.h"
@@ -114,7 +116,7 @@ MV_INLINE bool setup(){
     }
 
     LOGI(TAG, "Initializing file system...");
-    mjpegFile = ::mv::File("/sdcard/video/video.raw");
+    mjpegFile = ::mv::File(nameString.c_str());
     if(!mjpegFile.validate()){
         LOGE(TAG, "Error: Unable to validate file");
         return false;

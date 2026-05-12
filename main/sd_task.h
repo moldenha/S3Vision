@@ -8,12 +8,23 @@
 #include <sys/errno.h>
 #include <unistd.h>
 #include "file.hpp"
+
 static mv::File mjpegFile;
+static mv::name_it nameString;
 
 extern "C" {
 
+// this is a function that basically just increments the nameString while closing the file
+// then uses the new name as the next file
+static void finish_file(){
+    ++nameString;
+    mjpegFile.close();
+    mjpegFile = mv::File(nameString.c_str());
+}
+
 void sd_task(void *pv){ 
     int frame_collection = 0;
+    // int file_collection = 0;
     mv::SubFile<0> fa_(&mjpegFile);
     mv::SubFile<1> fb_(&mjpegFile);
     // bool flushable = false;
@@ -41,8 +52,17 @@ void sd_task(void *pv){
             ++frame_collection;
         }
 
-        if(frame_collection == 50){
-            mjpegFile.flush();
+        // if(frame_collection == 50){
+        //     mjpegFile.flush();
+        //     frame_collection = 0;
+        //     ++file_collection;
+        // }
+        // if(file_collection == 5) { // ~2.5 mins [24 per hour]
+        //     file_collection = 0;
+        //     finish_file();
+        // }
+        if(frame_collection == 250){ // ~2.5 mins [24 per hour] 
+            finish_file();
             frame_collection = 0;
         }
     } 

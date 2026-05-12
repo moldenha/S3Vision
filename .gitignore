@@ -6,4 +6,5 @@ managed_components/
 build/
 main/build/
 sdkconfig.old
+test/name_it
 
