@@ -50,7 +50,7 @@ The result is a system that stays stable even under sustained load.
 
 - Most ESP32 camera libraries prioritize ease of use.
 
-- S3Vision on the other hand is a pain in the ass to use, **prioritizing performance and reliability under load.**
+- S3Vision on the other hand **prioritizes performance and reliability under load.**
 
 ## Understanding S3Vision
  - Under the `main/setup.h` file, is the initial setup (which goes through setting up buffers and taks)
