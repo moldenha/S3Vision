@@ -15,6 +15,7 @@ extern "C" {
 #include "esp_timer.h"
 }
 
+
 #ifdef _MSC_VER
     #define MV_ALWAYS_INLINE __forceinline
 #elif defined(__GNUC__) || defined(__clang__)
@@ -53,6 +54,7 @@ extern "C" {
 
 #define MV_SD_MODE SD_SPI
 #define MV_SPEED_MODE FAST_MODE // or verbose mode
+// #define MV_SPEED_MODE VERBOSE_MODE // or verbose mode
 
 
 #define FRAME_MAGIC 0xDEADBEEF
@@ -76,6 +78,7 @@ extern "C" {
 #endif // ADAFRUIT_MICROSD_BREAKOUT_
 
 #define FRAME_POOL_SIZE 25
+
 
 
 extern "C" {

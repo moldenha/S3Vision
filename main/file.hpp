@@ -236,6 +236,21 @@ class File{
 #endif
     }
 
+    MV_ALWAYS_INLINE void close_file__() noexcept {
+#if MV_WRITE_MODE == WRITE_MODE_SAFE
+        if(file_){
+            fclose(file_);
+            file_ = NULL;
+            fd_ = 0;
+        }
+#elif MV_WRITE_MODE == WRITE_MODE_FAST
+        if(fd_ != 0){
+            ::close(fd_);
+            fd_ = 0;
+        }
+#endif
+        }
+
     public:
         File()
             :buffer_(NULL), 
@@ -298,23 +313,41 @@ class File{
         }
         
         MV_ALWAYS_INLINE void close() noexcept {
-            this->flush__();
+            // this->flush__();
             if(buffer_){
                 heap_caps_free(buffer_);
                 buffer_ = NULL;
             }
+            this->close_file__();
+        }
+        
+        MV_ALWAYS_INLINE void close_open(const char* fname, bool set_zero=true) {
+            // this is to basically close the file then open a new one
+            // however, it is to be done without freeing the buffer
+            //  - you would want this in a scenario where you are closing and then 
+            //      IMMEDIATELY opening a new file, but don't want to have 
+            //      to re-allocate the buffer again (saves time, resources, etc.)
+
+            this->close_file__();
+            idxa_full = false; 
+            idxb_full = false;
+            idx = 0;
+            idxa_len = 0; 
+            idxb_len = 0;
 #if MV_WRITE_MODE == WRITE_MODE_SAFE
-            if(file_){
-                fclose(file_);
-                file_ = NULL;
-                fd_ = 0;
-            }
+            file_ = fopen(fname, "wb");
+            if(!file_)
+                return;
+            fd_ = fileno(file_);
 #elif MV_WRITE_MODE == WRITE_MODE_FAST
-            if(fd_ != 0){
-                ::close(fd_);
-                fd_ = 0;
+            fd_ = open(fname, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+            if (fd_ < 0) {
+                return;
             }
 #endif
+            if(set_zero){memset(buffer_, 0, WRITE_BUFFER_SIZE);}
+
+
         }
 
 #if MV_WRITE_MODE == WRITE_MODE_SAFE

@@ -18,8 +18,7 @@ extern "C" {
 // then uses the new name as the next file
 static void finish_file(){
     ++nameString;
-    mjpegFile.close();
-    mjpegFile = mv::File(nameString.c_str());
+    mjpegFile.close_open(nameString.c_str());
 }
 
 void sd_task(void *pv){ 
@@ -57,14 +56,15 @@ void sd_task(void *pv){
         //     frame_collection = 0;
         //     ++file_collection;
         // }
-        // if(file_collection == 5) { // ~2.5 mins [24 per hour]
-        //     file_collection = 0;
-        //     finish_file();
-        // }
-        if(frame_collection == 250){ // ~2.5 mins [24 per hour] 
+        if(frame_collection == 50) { // ~0.5 mins [120 per hour]
             finish_file();
             frame_collection = 0;
         }
+        // if(frame_collection == 250){ // ~2.5 mins [24 per hour] 
+        //     LOGE(TAG, "Finishing File...");
+        //     finish_file();
+        //     frame_collection = 0;
+        // }
     } 
 }
 

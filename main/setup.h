@@ -38,8 +38,8 @@ namespace mv::config{
 
 MV_INLINE bool setup(){
     ::mv::config::setup_logging();
-    gpio_reset_pin(XIAO_LED_RGB_GPIO);
-    gpio_set_direction(XIAO_LED_RGB_GPIO, GPIO_MODE_OUTPUT);
+    // gpio_reset_pin(XIAO_LED_RGB_GPIO);
+    // gpio_set_direction(XIAO_LED_RGB_GPIO, GPIO_MODE_OUTPUT);
     gpio_reset_pin(GPIO_NUM_7);
     gpio_reset_pin(GPIO_NUM_8);
     gpio_reset_pin(GPIO_NUM_9);

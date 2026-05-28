@@ -25,6 +25,7 @@ static size_t max_len = MIN(20000, MV_RAW_BUF_SIZE); // 2000 bytes -> drop frame
 static size_t max_len = MV_RAW_BUF_SIZE;
 #endif // MV_MAX_FRAME_DROP
 
+
 void camera_task(void *pv) {
     // int frame_count = 0;
     while (true) {

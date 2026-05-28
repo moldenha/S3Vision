@@ -58,7 +58,7 @@ static esp_err_t init_camera(void) {
     s->set_dcw(s, 1);
     s->set_colorbar(s, 0);
 
-    // CRITICAL: Better exposure for dark scenes
+    // Better exposure for dark scenes
     s->set_exposure_ctrl(s, 1);     // Enable auto-exposure
     s->set_aec2(s, 1);              // Enable advanced exposure control
     s->set_ae_level(s, 2);          // Increase exposure level (range: -2 to 2)
