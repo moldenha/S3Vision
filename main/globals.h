@@ -52,10 +52,13 @@ extern "C" {
 #define SD_SDMMC 1
 #define SD_SPI 0
 
+#ifndef MV_SD_MODE
 #define MV_SD_MODE SD_SPI
+#endif
+#ifndef MV_SPEED_MODE
 #define MV_SPEED_MODE FAST_MODE // or verbose mode
-// #define MV_SPEED_MODE VERBOSE_MODE // or verbose mode
-
+// #define MV_SPEED_MODE VERBOSE_MODE // or fast mode
+#endif
 
 #define FRAME_MAGIC 0xDEADBEEF
 
@@ -99,3 +102,39 @@ TaskHandle_t sd_task_handle;
 
 #endif // MV_GLOBALS_H__ 
 
+
+// IMPORTANT CONFIG NOTES:
+// - These are notes related to either the globals here, or the sdkconfig's
+//
+// WiFi:
+//  - Obviously WiFi is not used in this project, for that reason we want the absolute minimum amount of power/memory
+//      dedicated to WiFi. Currently, the minimum amount of iRAM and memory is dedicated to WiFi. While the memory is not
+//      needed for this project, that (very fast) memory being taken up results in cache misses for the critical path, reducing
+//      the memory used helps to eliminate that.
+//
+//  - Current evidence suggests that CONFIG_ESP32_WIFI_ENABLED and CONFIG_ESP_WIFI_ENABLED can't be configured to off, however,
+//      as long as wifi isn't turned on it shouldn't matter
+//  
+//      CONFIG_SOC_WIFI_SUPPORTED=n # <- Saves power by preventing the hardware's WiFi module from initiating
+// Logging:
+//  - Logging (to a terminal) is a huge performance drop in any application. However, it is useful for debugging.
+//
+//  - When debugging, you can turn logging on with this define in the main file: #define MV_SPEED_MODE VERBOSE_MODE 
+//
+//  - When not debugging (like on battery running):
+//      - When this is happening you want everything related to debugging to be disabled so that no power or memory is dedicated to it
+//      - First, add this at the beggining of the main function: #define MV_SPEED_MODE FAST_MODE 
+//      - Then, these are the sdkconfig lines to change:
+//          CONFIG_USJ_ENABLE_USB_SERIAL_JTAG=n # <- doing this will save 5-10 mA of constant draining
+//          CONFIG_ESP_ROM_CONSOLE_OUTPUT_SECONDARY=n # <- Disabling saves speed (and a tiny fraction of power) by preventing the CPU from processing and pushing secondary UART data to the debug pins
+//          CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=n # <- Saves power by preventing clocks from running during sleep modes pre-created during code running
+//          CONFIG_ESP_CONSOLE_SECONDARY_NONE=n # <- Saves iRAM and DRAM preventing cache misses from hotpath (saving speed and power)
+//          CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG_ENABLED=n # <- Saves power by allowing APB clock to be turned off during run
+//
+//          change: # CONFIG_BOOTLOADER_LOG_LEVEL_NONE is not set
+//          to: CONFIG_BOOTLOADER_LOG_LEVEL_NONE=y
+//
+//          and change: CONFIG_BOOTLOADER_LOG_LEVEL_INFO=y
+//          to: # CONFIG_BOOTLOADER_LOG_LEVEL_INFO is not set
+//
+//          CONFIG_BOOTLOADER_LOG_LEVEL=0 # <- make 0

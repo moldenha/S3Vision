@@ -10,6 +10,8 @@ set(SDKCONFIG_DEFAULTS
     "${CMAKE_SOURCE_DIR}/boards/xiao_esp32s3_sense/sdkconfig.board"
 )
 
+set(EXCLUDE_COMPONENTS esp_wifi esp_eth bt)
+
 # Add board pins to include path
 include_directories("${CMAKE_SOURCE_DIR}/boards/xiao_esp32s3_sense")
 

@@ -18,9 +18,9 @@ extern "C" {
 extern "C" {
 
 
-#ifdef MV_MAX_FRAME_DROP
+#ifdef MV_MAX_FRAME_DROP // if used suggested is 20000 
 // Set like this for VGA mode
-static size_t max_len = MIN(20000, MV_RAW_BUF_SIZE); // 2000 bytes -> drop frame
+static size_t max_len = MIN(MV_MAX_FRAME_DROP, MV_RAW_BUF_SIZE); // 2000 bytes -> drop frame
 #else
 static size_t max_len = MV_RAW_BUF_SIZE;
 #endif // MV_MAX_FRAME_DROP

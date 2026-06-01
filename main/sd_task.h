@@ -18,8 +18,9 @@ extern "C" {
 // then uses the new name as the next file
 static void finish_file(){
     ++nameString;
-    mjpegFile.close_open(nameString.c_str());
+    mjpegFile.close_open(nameString.c_str(), /*set_zero = */false); // no reason to memset to zero since the memory is just going to be reused
 }
+
 
 void sd_task(void *pv){ 
     int frame_collection = 0;
@@ -56,6 +57,8 @@ void sd_task(void *pv){
         //     frame_collection = 0;
         //     ++file_collection;
         // }
+
+        // NOTE: a single frame collection is about 14 frames so in total, this is around 700 frames
         if(frame_collection == 50) { // ~0.5 mins [120 per hour]
             finish_file();
             frame_collection = 0;

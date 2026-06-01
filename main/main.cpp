@@ -1,4 +1,4 @@
-// #define MV_MAX_FRAME_DROP 
+// #define MV_MAX_FRAME_DROP 20000
 // #define ADAFRUIT_MICROSD_BREAKOUT_ 
 #include "setup.h"
 

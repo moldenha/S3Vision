@@ -163,4 +163,4 @@ MV_ALWAYS_INLINE void circular_free(uint8_t* idx){
 }
 
 
-#endif // MV_CIRCULAR_MALLOC_H__ 
+#endif // MV_CIRCULAR_MALLOC_H__

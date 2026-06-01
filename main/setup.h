@@ -13,6 +13,7 @@ extern "C" {
 #include "freertos/queue.h"
 #include "esp_timer.h"
 #include "pins.h"
+#include "esp_pm.h"
 }
 #include "globals.h"
 #include "name_it.hpp"
@@ -35,6 +36,9 @@ extern "C" {
 
 
 namespace mv::config{
+
+
+
 
 MV_INLINE bool setup(){
     ::mv::config::setup_logging();
@@ -121,7 +125,17 @@ MV_INLINE bool setup(){
         LOGE(TAG, "Error: Unable to validate file");
         return false;
     }
+
+    // Setting up intermediate sleeping for if the CPU is ever blocked
+    // This will slightly reduce battery life
+    esp_pm_config_t pm_config = {
+        .max_freq_mhz   = 240,
+        .min_freq_mhz   = 80,   // APB stays at 80 MHz; SPI and LEDC are unaffected
+        .light_sleep_enable = true 
+    };
+    esp_pm_configure(&pm_config);
     return true;
+
     
 }
 
